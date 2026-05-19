@@ -1,0 +1,22 @@
+# Sub-Repos
+atlas/
+mercato/
+meridian/
+nexus/
+scala/
+vanguard/
+services/
+exports/
+
+# System/Cache
+__pycache__/
+.pytest_cache/
+.venv/
+_archiv/
+
+# Tools
+.vscode/
+EOF~
+
+
+
