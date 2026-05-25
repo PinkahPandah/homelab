@@ -13,10 +13,15 @@ __pycache__/
 .pytest_cache/
 .venv/
 _archiv/
+.github
+.docs
+.opencode
 
 # Tools
 .vscode/
 EOF~
+AGENTS.md
+opencode.json
 
 
 
