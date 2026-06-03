@@ -8,6 +8,9 @@ vanguard/
 services/
 exports/
 
+# Credentials / Secrets
+shared/
+
 # System/Cache
 __pycache__/
 .pytest_cache/
