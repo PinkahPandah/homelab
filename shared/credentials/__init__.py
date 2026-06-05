@@ -138,3 +138,13 @@ def credential_status(connector_name: str, *, user_id: str | None = None) -> dic
     status["has_env_fallback"] = env_creds is not None
 
     return status
+
+
+def list_store_keys() -> set[str]:
+    """Return all keys currently in the credential store.
+
+    Safe — keys are connector_name:user_id strings, not credential values.
+    """
+    from shared.credentials.store import _read as read_store
+
+    return set(read_store().keys())
