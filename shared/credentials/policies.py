@@ -18,6 +18,7 @@ class AccessMode(str, Enum):
     SHARED = "shared"
     PERSONAL = "personal"
     OPTIONAL = "optional"
+    DEBUG = "debug"
 
 
 DEFAULT_POLICIES: dict[str, AccessMode] = {
@@ -134,7 +135,7 @@ def list_policies() -> dict[str, str]:
 def set_policy(connector_name: str, mode: str | AccessMode) -> None:
     if isinstance(mode, AccessMode):
         mode = mode.value
-    if mode not in {"disabled", "shared", "personal", "optional"}:
+    if mode not in {"disabled", "shared", "personal", "optional", "debug"}:
         raise ValueError(f"Invalid access mode: {mode}")
 
     with _policy_lock:
