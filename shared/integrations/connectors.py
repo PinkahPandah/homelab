@@ -273,10 +273,7 @@ ALL: list[IntegrationDef] = [
         display_name="VoucherVault",
         description="Gift card and voucher tracker. Track balances, expiry dates, and usage.",
         category="finance",
-        credential_fields=[
-            CredentialField(key="url", label="VoucherVault URL", secret=False),
-            CredentialField(key="api_key", label="API Key"),
-        ],
+        credential_fields=[],
         default_policy="shared",
     ),
 
@@ -428,6 +425,7 @@ ALL: list[IntegrationDef] = [
         description="Flight tracking. Real-time aircraft positions, flight routes, and airport data.",
         category="tracking",
         credential_fields=[
+            CredentialField(key="url", label="OpenSky API URL", secret=False),
             CredentialField(key="username", label="Username", secret=False),
             CredentialField(key="password", label="Password"),
         ],
@@ -533,7 +531,8 @@ ALL: list[IntegrationDef] = [
         description="Vessel tracking via AIS data. Real-time ship positions and maritime traffic.",
         category="external",
         credential_fields=[
-            CredentialField(key="api_key", label="API Key"),
+            CredentialField(key="url", label="AISHub API URL", secret=False),
+            CredentialField(key="username", label="AISHub User ID", secret=False),
         ],
     ),
 
