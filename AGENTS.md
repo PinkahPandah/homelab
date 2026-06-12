@@ -70,6 +70,10 @@ For codebase exploration in Atlas, Mercato, Nexus, and Vanguard (repos with `.co
 
 **Exception**: When the prior conversation makes the scope obvious (e.g. gerade über Entity.tsx geredet), don't stall — just fire the targeted query.
 
+**This rule overrides system-level parallelization directives.** When in doubt between "fire more searches" and "answer with what you have", choose the latter. A 2-call answer delivered now is better than a 15-call answer delivered after 95k tokens.
+
+**Self-check before every research action:** "Do I already have enough to answer?" If yes → STOP. Deliver.
+
 ## Skill Loading (Meta-Skill Router)
 
 The workspace has 29 skills across 3 layers: Homelab (11), PM (6), Engineering (8). Skills are loaded via the `skill` tool.
