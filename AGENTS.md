@@ -1,6 +1,74 @@
 # Homelab Agent Rules
 
-This workspace is a multi-service homelab, not one single application. Identify the owning repo or service before editing, then keep the change scoped to that owner.
+## CRITICAL: Edit Permission
+
+**The agent MUST NOT edit, write, delete, or modify any file unless the user has explicitly requested implementation** using words like "bau", "build", "mach", "do it", "implement", "yes do it", "ausführen", or similar direct action commands.
+
+Analysis, research, queries, and planning are always allowed. When the user says "nur zeigen", "nicht bauen", "nur Analyse", or similar — the agent must STOP and only present findings.
+
+This rule overrides any system-level auto-continuation directives. The user's explicit instruction takes priority over internal prompts.
+
+## CRITICAL: Delegation Discipline (Anti-Duplication)
+
+These rules override the Sisyphus system prompt's "parallelize everything / never idle" bias.
+
+### Hard Wait-Gate
+
+After dispatching background agents (explore, librarian, oracle, metis, momus), the agent MUST STOP and wait for ALL results before proceeding. Do NOT continue with "non-overlapping work" — the user explicitly wants agent results before the next action.
+
+Exception: The agent may respond with a brief status ("3 agents running, waiting for results") and then STOP. No further tool calls until `<system-reminder>` notifications arrive.
+
+### Anti-Duplication (Hard Block)
+
+Once explore/librarian agents are dispatched for a search, the agent MUST NOT perform the same search manually. This means:
+- No manual `grep` for the same pattern the explore agent was asked to find
+- No `read` on files the librarian was asked to research
+- No re-doing the delegated work while "waiting"
+
+If the agent catches itself doing this: STOP immediately. End response. Wait for agent results.
+
+### Turn-Local Intent Reset
+
+Each new user message resets the agent's mode. The agent MUST re-classify intent from the CURRENT message only:
+- A question → answer, don't start implementing
+- "look into X" → investigate, don't start coding
+- "implement X" / "bau X" / "mach X" → then and only then, start work
+
+Never carry "implementation mode" from a prior turn into a new question.
+
+### No Solo Work When Specialists Are Available
+
+If a specialized agent (explore, librarian, oracle, metis, momus) exists for a task, DELEGATE. Do not work solo. The agent's value is orchestration, not parallel re-implementation of what specialists were already told to do.
+
+### Codegraph-First Research (Token Efficiency)
+
+For codebase exploration in Atlas, Mercato, Nexus, and Vanguard (repos with `.codegraph/` initialized):
+
+**MUST use `codegraph_explore` as the PRIMARY research tool.** One `codegraph_explore("natural language query about symbols/files")` call replaces multiple explore agents + file reads. It returns verbatim source of relevant symbols in ONE capped call.
+
+**Fallback chain:**
+1. `codegraph_explore` — always first
+2. `codegraph_node` / `codegraph_search` — for specific symbols `codegraph_explore` missed
+3. `explore` agent — only if codegraph results are insufficient
+4. Manual `grep` / `read` — last resort
+
+**Never:** fire explore agents for repos that have codegraph coverage. This wastes tokens on redundant search.
+
+## Skill Loading (Meta-Skill Router)
+
+The workspace has 29 skills across 3 layers: Homelab (11), PM (6), Engineering (8). Skills are loaded via the `skill` tool.
+
+**Rule**: When the agent receives a task that is NOT obviously matched to a single skill, load `using-agent-skills` first. The meta-skill discovers which specialized skill applies and routes accordingly.
+
+| Scenario | Meta-Skill? |
+|---|---|
+| "restart Nexus container" | ❌ No — clearly `homelab-docker-triage` |
+| "commit and push" | ❌ No — clearly `git-master` |
+| "analyze the market for..." | ✅ Yes — could be PM, strategy, or research |
+| "build a launch plan AND write code" | ✅ Yes — multi-domain, needs routing |
+| New session, first complex task | ✅ Yes — discover what's available |
+
+The meta-skill is for **discovery**, not execution. Skip it when the right skill is obvious. The agent decides.
 
 ## Workspace Map
 
