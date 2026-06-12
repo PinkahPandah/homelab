@@ -64,9 +64,11 @@ For codebase exploration in Atlas, Mercato, Nexus, and Vanguard (repos with `.co
 | "wie funktioniert X in Datei Y?" | OK — scope klar |
 | "finde alle CRM-relevanten Dateien" | **Zu breit** — auf bestimmten Layer eingrenzen lassen |
 
-**Rule**: If the prompt could trigger >3 tool calls without clear scope, ask ONE narrowing question first. "Was genau brauchst du — Model, API-Route, UI-Component, oder alles drei?"
+**Rule**: If the prompt could trigger >3 tool calls without clear scope AND the intent isn't obvious from session context, ask ONE narrowing question first. "Was genau brauchst du — Model, API-Route, UI-Component, oder alles drei?"
 
 **Never** silently launch 2+ explore agents or read 2000-line files for a request that could be answered with one targeted query.
+
+**Exception**: When the prior conversation makes the scope obvious (e.g. gerade über Entity.tsx geredet), don't stall — just fire the targeted query.
 
 ## Skill Loading (Meta-Skill Router)
 
