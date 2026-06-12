@@ -103,9 +103,9 @@ The meta-skill is for **discovery**, not execution. Skip it when the right skill
 ## Model Policy
 
 - OpenCode is configured in `opencode.json` to use Homelab LiteLLM by default.
-- Serious implementation work should use `litellm/gpt-5.5` with xhigh reasoning.
-- Plan, architecture, review, and question-heavy work should use `litellm/gpt-5.4` with xhigh reasoning.
-- `gpt-5.4-nano` is only for small internal helper tasks such as title generation, not for substantive coding.
+- Serious implementation work (`build` agent) uses `litellm/deepseek-v4-pro` (reasoning model).
+- Plan, architecture, review, and question-heavy work uses `litellm/deepseek-v4-pro`.
+- `litellm/deepseek-v4-flash` is for small internal helper tasks (title generation, etc.), not for substantive coding. Configured as `small_model`.
 - OpenAI can be connected in parallel, but direct OpenAI/ChatGPT usage bypasses LiteLLM budget and spend tracking. Prefer the LiteLLM path unless the user explicitly wants the direct provider path.
 
 ## OpenCode Customizations
