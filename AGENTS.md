@@ -54,6 +54,20 @@ For codebase exploration in Atlas, Mercato, Nexus, and Vanguard (repos with `.co
 
 **Never:** fire explore agents for repos that have codegraph coverage. This wastes tokens on redundant search.
 
+### Prompt Pre-Flight (Token Guard)
+
+**Before launching expensive research** (codegraph_explore, explore/librarian agents, broad file reads), check the user's prompt for vagueness:
+
+| Prompt | Verdict |
+|---|---|
+| "hol dir den Kontext" / "schau dir X an" | **Zu vage** — nachfragen: welcher Aspekt? Model? Route? UI? |
+| "wie funktioniert X in Datei Y?" | OK — scope klar |
+| "finde alle CRM-relevanten Dateien" | **Zu breit** — auf bestimmten Layer eingrenzen lassen |
+
+**Rule**: If the prompt could trigger >3 tool calls without clear scope, ask ONE narrowing question first. "Was genau brauchst du — Model, API-Route, UI-Component, oder alles drei?"
+
+**Never** silently launch 2+ explore agents or read 2000-line files for a request that could be answered with one targeted query.
+
 ## Skill Loading (Meta-Skill Router)
 
 The workspace has 29 skills across 3 layers: Homelab (11), PM (6), Engineering (8). Skills are loaded via the `skill` tool.
