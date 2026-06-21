@@ -1,5 +1,17 @@
 # Homelab Agent Rules
 
+## CRITICAL: Service Pre-Flight (Check Before Acting)
+
+Before ANY tool call targeting a homelab service (query, exec, curl, API call):
+
+1. **Container name**: `rtk docker ps --format "{{.Names}}"` — never guess (nexus-api, vanguard, not "nexus" or "vanguard-api")
+2. **Tools inside container**: no `curl` in most Python images — use `rtk docker exec <name> python3 -c "import httpx; ..."`
+3. **Network**: inter-container = Docker DNS names (`nexus-api:8000`), never `localhost` from host
+4. **Auth**: all `*.siedersleben.com` → Authelia → skip, go through container network instead
+5. **Schema before mutation**: `SELECT column_name FROM information_schema.columns WHERE table_name='...'` before any INSERT/UPDATE/DELETE
+
+This rule catches the same 5 mistakes that repeat across sessions. No exceptions.
+
 ## CRITICAL: Edit Permission
 
 **The agent MUST NOT edit, write, delete, or modify any file unless the user has explicitly requested implementation** using words like "bau", "build", "mach", "do it", "implement", "yes do it", "ausführen", or similar direct action commands.
@@ -39,6 +51,15 @@ Never carry "implementation mode" from a prior turn into a new question.
 ### No Solo Work When Specialists Are Available
 
 If a specialized agent (explore, librarian, oracle, metis, momus) exists for a task, DELEGATE. Do not work solo. The agent's value is orchestration, not parallel re-implementation of what specialists were already told to do.
+
+### Momus Plan Review Trigger
+
+When a work plan is saved to any of these locations, invoke Momus with the file path as the sole prompt:
+
+- `.omo/plans/*.md`
+- `<service>/docs/plans/*.md` (z.B. `nexus/docs/plans/my-plan.md`)
+
+Momus reviews the plan for clarity, verifiability, completeness, and gaps. Do NOT invoke Momus for inline plans or todo lists — only for saved plan files.
 
 ### Codegraph-First Research (Token Efficiency)
 
@@ -119,6 +140,7 @@ The meta-skill is for **discovery**, not execution. Skip it when the right skill
 
 ## Always-On Safety Rules
 
+- **Never use emojis in code, UI text, option values, labels, or any generated content UNLESS the user explicitly requests it.** This includes prefixing select option values with emoji, adding emoji to badges/labels, or any use of emoji characters in files. Emojis break value matching (e.g., Select option `"😊 Gut"` will not match a stored value of `"Gut"`).
 - Prefer the smallest change that fixes the root cause.
 - Do not refactor across services unless the task requires it.
 - Preserve persistent data. Do not delete historical, finance, audit, health, task, or note data to work around schema or foreign-key issues.
