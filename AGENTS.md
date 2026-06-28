@@ -221,6 +221,7 @@ The meta-skill is for **discovery**, not execution. Skip it when the right skill
 - AEGIS must not execute domain tools directly. Route domain work through Department Heads; Heads coordinate and synthesize Worker output even for a single Worker.
 - The frontend is a vanilla JS SPA. Use the existing `static/js/*.js` and `static/css/*.css` architecture.
 - After Vanguard service changes, rebuild/recreate the container and verify the deployed behavior when feasible.
+- After every `git push` to Vanguard branches: run `gh run list --repo PinkahPandah/vanguard --limit 2 --json conclusion,status` and wait for CI to complete. On failure: read `gh run view <id> --log-failed`, fix the issue, commit, push again. Never leave a CI failure unresolved.
 
 ### Nexus
 
