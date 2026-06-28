@@ -213,6 +213,7 @@ The meta-skill is for **discovery**, not execution. Skip it when the right skill
 ### Vanguard
 
 - Load `.github/instructions/vanguard.instructions.md` when working under `vanguard/**`.
+- Load `.github/instructions/vanguard.security.instructions.md` when working under `vanguard/**`.
 - Load `.github/instructions/vanguard.frontend.instructions.md` when working under `vanguard/static/**`.
 - Load `.github/instructions/vanguard.review.instructions.md` when the user requests a code review for Vanguard changes.
 - Vanguard is an orchestration product, not a generic chatbot. Preserve task flow, routing, budget, notifications, approvals, audit, and worker governance.
