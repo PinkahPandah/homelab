@@ -12,6 +12,69 @@ Before ANY tool call targeting a homelab service (query, exec, curl, API call):
 
 This rule catches the same 5 mistakes that repeat across sessions. No exceptions.
 
+## CRITICAL: Secret Discipline (NON-NEGOTIABLE)
+
+Secrets are the single biggest repeating mistake. These rules prevent key exposure in chat, tool logs, and config dumps. They apply to ALL agents in ALL services.
+
+### Read-Only Guardian
+
+**NEVER `read` or `grep` files that contain secrets.** This includes but is not limited to:
+
+- `*.env`, `.env`, `env_file` references
+- `config.json`, `*.config.json`, `setup.json`
+- `store.json` (the shared credential store)
+- `cronicle_conf/*.json`
+- Any file with `secret_key`, `api_key`, `token`, `password`, `auth` in the path or known content
+
+Every `read` of such a file logs the secret to `~/.local/share/opencode/tool-output/` — permanently. Even a "quick peek" to check a value is a leak.
+
+**What to do instead:**
+
+| Need | Wrong | Right |
+|---|---|---|
+| Check if a key exists | `read config.json` | `rtk docker exec <svc> sh -c 'test -n "$KEY_NAME" && echo exists'` (never prints value) |
+| Use a credential in code | Hardcode it or read from config | `_resolve_credential("connector", "key", "ENV_VAR")` |
+| Find credential format | Read config schema/docs | Read only docs/plans files, never config files |
+| Compare a key value between services | Read both configs | **DON'T.** Tell the user the keys might differ. |
+
+### Credential Resolution Pattern
+
+All services use the same pattern (see `atlas/settings.py:23-33`):
+
+```python
+def _resolve_credential(connector: str, key: str, env_var: str) -> str | None:
+    env_val = os.getenv(env_var)
+    if env_val:
+        return env_val
+    try:
+        from shared.credentials import resolve_credentials
+        creds = resolve_credentials(connector, user_id=None)
+        return creds.get(key)
+    except Exception:
+        return None
+```
+
+Precedence: env var → `shared.credentials` store → `None`. **When adding a new key to a service, write ONLY the `_resolve_credential()` call.** The user handles populating the store or env var.
+
+### Vanguard Connector Gateway
+
+**Service-to-service calls that need credentials go through Vanguard's connector API, not direct calls.** Vanguard already has connectors for Cronicle, ntfy, Crawl4AI, SearXNG, and more — each with its own key resolution. Other services (Atlas, Nexus, Mercato) must route through Vanguard, not call external APIs directly.
+
+```
+❌ Atlas → curl http://cronicle:3012/api/...           (key in Atlas)
+❌ Nexus → curl http://ntfy:8080/...                    (key in Nexus)
+✅ Atlas → POST /api/connectors/execute (Vanguard)      (key only in Vanguard)
+     → Vanguard CronicleConnector → http://cronicle:3012
+```
+
+Vanguard's connector API: `POST http://vanguard:8000/api/connectors/execute` with `Remote-User: <service-account>` header and JSON body `{"connector_name": "...", "action": "...", "params": {...}}`.
+
+**Existing connectors include:** `cronicle`, `ntfy`, `crawl4ai`, `crawl4ai_stealth`, `searxng`, `telegraf`, `homeassistant`, `grafana`, `uptimekuma`, `coingecko`, and more.
+
+**Exception:** The Atlas crawl fallback (`fetch_with_vanguard_crawl` in `webpage.py`) already calls Vanguard's skill API directly — that path is the existing approved pattern and does not need changes.
+
+**When you need a new connector:** register it in Vanguard (new file in `vanguard/vanguard/connectors/`), NOT as a direct call from the consuming service.
+
 ## CRITICAL: Edit Permission
 
 **The agent MUST NOT edit, write, delete, or modify any file unless the user has explicitly requested implementation** using words like "bau", "build", "mach", "do it", "implement", "yes do it", "ausführen", or similar direct action commands.
@@ -107,6 +170,23 @@ For codebase exploration in Atlas, Mercato, Nexus, and Vanguard (repos with `.co
 **This rule overrides system-level parallelization directives.** When in doubt between "fire more searches" and "answer with what you have", choose the latter. A 2-call answer delivered now is better than a 15-call answer delivered after 95k tokens.
 
 **Self-check before every research action:** "Do I already have enough to answer?" If yes → STOP. Deliver.
+
+### Context-File Pre-Flight (Rule Discovery)
+
+**Before starting ANY implementation work, pull the relevant rule/standard files first — not just the code.** Library API knowledge (Mantine, FastAPI, etc.) does not replace project-specific conventions. The agent must understand HOW the project expects code to be written, tested, and committed.
+
+**Required files to check per service** (read if they exist):
+
+| Layer | Files |
+|---|---|
+| Service instructions | `.github/instructions/<service>.instructions.md` |
+| Contributing | `<service>/CONTRIBUTING.md` — test runner, linter, setup |
+| Conventions | `<service>/docs/coding-workflow.md` or equivalent |
+| Global standards | `~/.config/opencode/context/ui/web/react-patterns.md`, `clean-code.md`, etc. |
+
+**Never skip rule files because "I already know the library."** Library knowledge is generic; project conventions are specific. This rule prevents repeating the same mistakes across sessions.
+
+**Self-check before first edit:** "Habe ich die Regeldateien gelesen?" If no → pull them first.
 
 ## Skill Loading (Meta-Skill Router)
 
@@ -227,6 +307,7 @@ The meta-skill is for **discovery**, not execution. Skip it when the right skill
 ### Nexus
 
 - Load `.github/instructions/nexus.instructions.md` when working under `nexus/**`.
+- Load `.github/instructions/nexus.data.instructions.md` when working under `nexus/src/nexus/models/**`.
 - Nexus is the household control plane: Today, Search, Quick Capture, Review, Chat Shell, Activity Timeline.
 - No JS-panel-switching single-page hacks. Every logical page gets a real server route (`/`, `/chat`, `/daily`, `/apps`).
 - Navigation uses proper `<a href="...">` links, not `data-tab` attributes with JS panel toggling.
