@@ -28,6 +28,22 @@ Secrets are the single biggest repeating mistake. These rules prevent key exposu
 
 Every `read` of such a file logs the secret to `~/.local/share/opencode/tool-output/` — permanently. Even a "quick peek" to check a value is a leak.
 
+#### Secret Filter, Not Call Abort
+
+When a tool call (Read, Grep, Bash, Task/Agent) would hit secret-bearing files or extract env values as PART of a larger valid call, the agent MUST **filter out the secret parts and execute the rest of the call** — not abort entirely.
+
+| Scenario | Wrong | Right |
+|---|---|---|
+| Explore-Agent soll Service-Verzeichnis durchsuchen | Agent bricht ab weil `.env` existiert | Agent exploriert alle Dateien AUSSER `.env`, `*.config.json`, `store.json` |
+| `read` soll compose + env zusammen lesen | Read bricht mit Fehler ab | Read überspringt `.env`, liest nur compose.yml und andere unkritische Dateien |
+| `docker exec <svc> env` zur Diagnose | Dump aller env vars | `docker exec <svc> sh -c 'test -n "$VAR" && echo "VAR: set" || echo "VAR: unset"'` — zeigt ob gesetzt, nie den Wert |
+| `grep` über Verzeichnis mit `.env` | Grep matched Zeilen aus `.env` | Grep mit `--exclude='*.env' --exclude='*.config.json'` |
+| Task-Agent bekommt Prompt "read everything" | Agent liest `.env` | Prompt muss explizit sagen: "skip .env, skip configs with secrets" |
+
+**Shell-Command-Pattern-Filter:** Vor JEDEM `bash`-Tool-Call prüft der Agent ob der Befehl `env`, `cat .env`, `grep -r .env`, `echo $SECRET`, `printenv` oder äquivalent enthält. Wenn ja: Befehl umschreiben so dass nur `test -n`/Existenz-Checks übrig bleiben, nie Werte.
+
+**Delegations-Blockliste:** Wenn ein Task/Explore-Agent ein Verzeichnis durchsuchen soll das `.env` oder `store.json` enthält, MUSS der Prompt die Ausschlussliste enthalten: `"Skip these files: .env, *.config.json, store.json, *secret*, *password*, *token*, cronicle_conf/*.json"`. Fehlt die Liste im Prompt, wurde der Agent falsch instruiert.
+
 **What to do instead:**
 
 | Need | Wrong | Right |
