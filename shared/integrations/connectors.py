@@ -56,6 +56,7 @@ ALL: list[IntegrationDef] = [
         category="automation",
         credential_fields=[
             CredentialField(key="url", label="Crawl4AI URL", secret=False),
+            CredentialField(key="api_key", label="API Token"),
         ],
     ),
     IntegrationDef(

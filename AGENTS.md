@@ -12,6 +12,89 @@ Before ANY tool call targeting a homelab service (query, exec, curl, API call):
 
 This rule catches the same 5 mistakes that repeat across sessions. No exceptions.
 
+## CRITICAL: Service-to-Service Auth (Shared Credentials)
+
+**NEVER try to call homelab APIs from the host or with user credentials.** Service-to-service calls use **service accounts via `Remote-User` header**.
+
+### How to Test Service Integration
+
+When you need to verify that Service A correctly calls Service B (e.g., Nexus → Vanguard):
+
+```python
+# ✅ CORRECT: From inside Service A container, call Service B with service account
+rtk docker exec <service-a-container> python3 -c "
+import asyncio
+import httpx
+
+async def test():
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.post(
+            'http://<service-b>:8000/api/...',
+            headers={'Remote-User': 'cronicle'},  # or other service account
+            json={...}
+        )
+        print(f'Status: {resp.status_code}')
+        print(resp.json())
+
+asyncio.run(test())
+"
+```
+
+**Service account names by service:**
+- **Nexus → Vanguard**: `Remote-User: cronicle` (see `nexus/src/nexus/api/routes/today.py:170`)
+- **Atlas → Vanguard**: `Remote-User: atlas`
+- **Mercato → Vanguard**: `Remote-User: mercato`
+- **Generic automation**: `Remote-User: cronicle`
+
+**Common mistakes to avoid:**
+- ❌ `curl https://nexus.siedersleben.com/...` from host → Authelia blocks
+- ❌ `Remote-User: admin@siedersleben.com` → Not a service account
+- ❌ `Remote-User: msiedersleben@roadeo.de` → Owner email, not service account
+- ❌ Calling from Python on host → No container network access
+- ❌ Trying to resolve credentials manually → Use the service account header
+
+**When to check service account name:**
+1. Read the calling service's code (e.g., `nexus/.../today.py` has `_vanguard_auth()`)
+2. Look for `Remote-User` header in existing integration code
+3. Default to `cronicle` if unsure and test
+
+**This pattern works for ALL homelab service-to-service calls.** No exceptions.
+
+### How to Execute Multi-Line Python in Containers
+
+**✅ CORRECT — Use heredoc with stdin:**
+
+```bash
+rtk docker exec -i <container> python3 <<'EOF'
+import asyncio
+import httpx
+
+async def test():
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.post(
+            'http://vanguard:8000/api/connectors/execute',
+            headers={'Remote-User': 'cronicle'},
+            json={'connector_name': 'yamtrack', 'action': 'get_tv_seasons', 'params': {...}}
+        )
+        print(f'Status: {resp.status_code}')
+        print(resp.json())
+
+asyncio.run(test())
+EOF
+```
+
+**Critical syntax:**
+- `<<'EOF'` with **single quotes** (no shell interpolation)
+- `-i` flag for stdin
+- Multi-line async code works perfectly
+- Python f-strings with single quotes inside heredoc
+
+**❌ BROKEN patterns:**
+- `python3 -c "async def..."` — syntax error with async
+- Heredoc without `-i` — no stdin
+- `<<"EOF"` with double quotes — escaping hell
+- `echo '...' | docker exec` — quote escaping breaks
+
 ## CRITICAL: Secret Discipline (NON-NEGOTIABLE)
 
 Secrets are the single biggest repeating mistake. These rules prevent key exposure in chat, tool logs, and config dumps. They apply to ALL agents in ALL services.
@@ -257,6 +340,51 @@ The meta-skill is for **discovery**, not execution. Skip it when the right skill
 - Existing VS Code Copilot source customizations live in `.github/agents/`, `.github/skills/`, `.github/instructions/`, and `.github/prompts/`.
 - If you update an agent or skill for one surface, keep the matching OpenCode and VS Code copies in sync unless the change is surface-specific.
 - VS Code prompt templates remain in `.github/prompts/`; use them as workflow references when a user asks for one of those tasks.
+
+## API Route Structure (FastAPI Services)
+
+**When testing API endpoints, ALWAYS check the route prefix and app mount structure first.**
+
+### Common Patterns
+
+| Service | API Prefix | Example Route | Mount Point |
+|---------|-----------|---------------|-------------|
+| **Vanguard** | `/api` | `/api/connectors/execute` | `app.include_router(api_router, prefix="/api")` |
+| **Nexus** | `/api` (internally) | `/entities/{id}` mounts at `/api/entities/{id}` | `app.include_router(api_router, prefix=settings.api_prefix)` |
+| **Atlas** | `/api` | `/api/search` | Check `main.py` for prefix |
+
+### How to Find the Correct Route
+
+```bash
+# 1. Check main.py for prefix
+cd homelab/<service> && rtk grep "include_router" src/<service>/main.py
+
+# 2. Check route definitions
+cd homelab/<service> && rtk grep "@router.get\|@router.post" src/<service>/api/routes/*.py
+
+# 3. Check settings
+cd homelab/<service> && rtk grep "api_prefix" src/<service>/config.py
+```
+
+### Testing Internal API Calls
+
+```python
+# ✅ CORRECT: Check if route needs prefix
+# Nexus example: routes defined as @router.get("/entities/{id}")
+# main.py: app.include_router(api_router, prefix=settings.api_prefix)
+# settings.api_prefix = "/api" (default)
+# → Full path: /api/entities/{id}
+
+resp = await client.get(
+    f'http://nexus-api:8000/api/entities/{entity_id}',  # ✅ With prefix
+    headers={'Remote-User': 'cronicle'}
+)
+
+# ❌ WRONG: Guessing the path
+resp = await client.get(f'http://nexus-api:8000/entities/{id}')  # Missing /api prefix
+```
+
+**Rule: When a route returns HTML instead of JSON, you're hitting the SPA fallback (wrong path).**
 
 ## Always-On Safety Rules
 

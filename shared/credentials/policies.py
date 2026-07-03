@@ -24,7 +24,7 @@ class AccessMode(str, Enum):
 DEFAULT_POLICIES: dict[str, AccessMode] = {
     "docker":         AccessMode.DISABLED,
     "n8n":            AccessMode.DISABLED,
-    "nexus":          AccessMode.DISABLED,
+    "nexus":          AccessMode.SHARED,
     "atlas":          AccessMode.SHARED,
     "crisis_score":   AccessMode.SHARED,
     "substack":       AccessMode.SHARED,

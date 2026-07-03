@@ -17,8 +17,9 @@ __pycache__/
 .venv/
 _archiv/
 .github
-.docs
+.docs/
 .opencode
+.tmp/
 
 # Tools
 .vscode/
@@ -28,5 +29,7 @@ opencode.json
 .omo/
 
 
-
 shared/integrations/__pycache__/*
+shared/integrations/__pycache__/models.cpython-312.pyc
+shared/integrations/__pycache__/connectors.cpython-312.pyc
+shared/integrations/__pycache__/__init__.cpython-312.pyc
