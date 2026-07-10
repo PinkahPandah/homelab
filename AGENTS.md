@@ -12,6 +12,34 @@ Before ANY tool call targeting a homelab service (query, exec, curl, API call):
 
 This rule catches the same 5 mistakes that repeat across sessions. No exceptions.
 
+## CRITICAL: Data Access — Debug vs. Production (STOP writing throwaway tools)
+
+Two separate rules. Do NOT confuse them.
+
+### Debug / Analyse (Agent wants to look at data)
+
+**Find the host path via mounts, then use host tools directly. NO docker exec, NO Python scripts, NO new tools.**
+
+```bash
+# 1. Find where a container's data lives on the host:
+docker inspect -f '{{ range .Mounts }}{{ .Source }} -> {{ .Destination }}{{ println }}{{ end }}' <container>
+
+# 2. Use host tools (sqlite3, psql, jq — already installed) on the .Source path:
+sqlite3 /home/pinkahpandah/homelab/meridian/yamtrack/.db/db.sqlite3 "SELECT ..."
+```
+
+The homelab root `/home/pinkahpandah/homelab` is mounted into most containers as `/workspace`. So container path `/workspace/X` = host path `/home/pinkahpandah/homelab/X`.
+
+### Production Code (Service reads/writes another service's data)
+
+**NEVER direct DB access from service code. ALWAYS the connector/API.**
+
+- Service→Service data = `POST http://vanguard:8000/api/connectors/execute` with `Remote-User: cronicle`
+- Existing connectors already handle auth, dedup, TMDB-padding, caching, audit
+- Before writing ANY data-access code, check `vanguard/vanguard/connectors/` and `vanguard/vanguard/skills/` for an existing connector/action
+
+**Decision:** Debug question → host sqlite3 (instant). Feature → existing connector (no new tool). If neither fits, extend the connector — do NOT write a standalone script.
+
 ## CRITICAL: Service-to-Service Auth (Shared Credentials)
 
 **NEVER try to call homelab APIs from the host or with user credentials.** Service-to-service calls use **service accounts via `Remote-User` header**.
@@ -289,7 +317,7 @@ For codebase exploration in Atlas, Mercato, Nexus, and Vanguard (repos with `.co
 
 ## Skill Loading (Meta-Skill Router)
 
-The workspace has 29 skills across 3 layers: Homelab (11), PM (6), Engineering (8). Skills are loaded via the `skill` tool.
+The workspace has skills across Homelab, PM, and Engineering layers. Skills are loaded via the `skill` tool.
 
 **Rule**: When the agent receives a task that is NOT obviously matched to a single skill, load `using-agent-skills` first. The meta-skill discovers which specialized skill applies and routes accordingly.
 
@@ -320,6 +348,13 @@ The meta-skill is for **discovery**, not execution. Skip it when the right skill
 - Plan, architecture, review, and question-heavy work uses `litellm/deepseek-v4-pro`.
 - `litellm/deepseek-v4-flash` is for small internal helper tasks (title generation, etc.), not for substantive coding. Configured as `small_model`.
 - OpenAI can be connected in parallel, but direct OpenAI/ChatGPT usage bypasses LiteLLM budget and spend tracking. Prefer the LiteLLM path unless the user explicitly wants the direct provider path.
+
+### DeepSeek / OpenCode Prompt Discipline
+
+- For substantial coding tasks, structure task understanding with CO-STAR: Context, Objective, Style, Tone, Audience, Response. Do not force the user to fill every field for simple tasks; infer what is already known and ask only for the missing detail that changes the work.
+- For long prompts or delegated agent work, use a task sandwich: role and task first, focused context next, and a one-line objective repeated at the bottom.
+- Prefer focused snippets, file paths, tests, errors, and local examples over broad repository dumps. Static conventions belong in rules and skills; transient logs and code excerpts belong in the task prompt.
+- When proposing or completing a non-trivial change, include a brief technical rationale, likely edge cases or performance risks, and the cheapest verification step.
 
 ## Image & Vision Model Fallback
 
