@@ -20,6 +20,7 @@ _archiv/
 .docs/
 .opencode
 .tmp/
+.bin/
 
 # Tools
 .vscode/
